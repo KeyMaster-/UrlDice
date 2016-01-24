@@ -14,7 +14,7 @@ enum Op {
 
 class DiceLexer extends hxparse.Lexer implements hxparse.RuleBuilder {
     static public var tok = @:rule [
-        "[1-9]+d[1-9]+" => strToRoll(lexer.current),
+        "[1-9][0-9]*d[1-9][0-9]*" => strToRoll(lexer.current),
         "\\+" => TOperation(plus),
         "\\-" => TOperation(minus),
         "\\*" => TOperation(multiply),
@@ -23,7 +23,7 @@ class DiceLexer extends hxparse.Lexer implements hxparse.RuleBuilder {
     ];
 
     static function strToRoll(str:String) {
-        var regex = ~/([1-9]+)d([1-9]+)/;
+        var regex = ~/([1-9][0-9]*)d([1-9][0-9]*)/;
         regex.match(str);
         return TRoll(Std.parseInt(regex.matched(1)), Std.parseInt(regex.matched(2)));
     }
