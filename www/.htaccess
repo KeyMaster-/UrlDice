@@ -1,0 +1,2 @@
+RewriteEngine on
+RewriteRule ^[\d\w+\-*]+$ index.html

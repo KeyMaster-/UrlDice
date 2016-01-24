@@ -1,0 +1,4 @@
+-lib hxparse
+-cp src/
+-main Main
+-js www/main.js
