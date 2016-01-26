@@ -1059,7 +1059,10 @@ Main.main = function() {
 	var input = window.location.pathname;
 	var pos = input.lastIndexOf("/") + 1;
 	input = HxOverrides.substr(input,pos,null);
-	var doc = window.document;
+	console.log(input);
+	var dice_regex = new EReg("^(\\d+d\\d+|\\d+)([+\\-*](\\d+d\\d+|\\d+))*$","i");
+	var matched_regex = dice_regex.match(input);
+	if(!matched_regex) input = "1d6";
 	var parser = new DiceParser((function($this) {
 		var $r;
 		var data = haxe_io_Bytes.ofString(input);
@@ -1067,16 +1070,26 @@ Main.main = function() {
 		return $r;
 	}(this)));
 	var dice_result = parser.parse();
-	var div = doc.createElement("div");
-	div.innerHTML = "Result: " + dice_result;
+	var doc = window.document;
+	var div;
+	div = doc.createElement("div");
+	div.align = "center";
+	div.innerHTML = "<h1>Result: " + dice_result + "</h1>";
 	doc.body.appendChild(div);
+	if(!matched_regex) {
+		div = doc.createElement("div");
+		div.align = "center";
+		div.innerHTML = "(Your input was incorrect, so we rolled a d6 for you)<br><br>";
+		doc.body.appendChild(div);
+	}
 	var table = doc.createElement("table");
+	table.align = "center";
 	var row;
 	row = js_Boot.__cast(table.insertRow() , HTMLTableRowElement);
 	var cell = row.insertCell();
-	cell.innerHTML = "Die";
+	cell.innerHTML = "<b>Die</b>";
 	cell = row.insertCell();
-	cell.innerHTML = "Value";
+	cell.innerHTML = "<b>Value</b>";
 	var _g = 0;
 	var _g1 = parser.rolls;
 	while(_g < _g1.length) {
