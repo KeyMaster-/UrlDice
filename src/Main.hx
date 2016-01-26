@@ -15,6 +15,8 @@ class Main {
         var parser = new DiceParser(byte.ByteData.ofString(input));
         var dice_result = parser.parse();
 
+        js.Browser.window.history.pushState(null, "DiceUrl", '$input');
+
         var doc = js.Browser.window.document;
 
         var div;

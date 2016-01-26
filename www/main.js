@@ -1072,6 +1072,7 @@ Main.main = function() {
 	var dice_result = parser.parse();
 	var doc = window.document;
 	var div;
+	window.history.pushState(null,"DiceUrl","" + input);
 	div = doc.createElement("div");
 	div.align = "center";
 	div.innerHTML = "<h1>Result: " + dice_result + "</h1>";
