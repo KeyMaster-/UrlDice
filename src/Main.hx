@@ -19,9 +19,7 @@ class Main {
 
         var doc = js.Browser.window.document;
 
-        var div;
-
-        div = doc.createDivElement();
+        var div = doc.createDivElement();
         div.align = 'center';
         div.innerHTML = '<h1>Result: $dice_result</h1>';
         doc.body.appendChild(div);

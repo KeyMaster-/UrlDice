@@ -1070,10 +1070,9 @@ Main.main = function() {
 		return $r;
 	}(this)));
 	var dice_result = parser.parse();
-	var doc = window.document;
-	var div;
 	window.history.pushState(null,"DiceUrl","" + input);
-	div = doc.createElement("div");
+	var doc = window.document;
+	var div = doc.createElement("div");
 	div.align = "center";
 	div.innerHTML = "<h1>Result: " + dice_result + "</h1>";
 	doc.body.appendChild(div);
