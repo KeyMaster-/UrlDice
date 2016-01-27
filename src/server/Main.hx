@@ -1,3 +1,5 @@
+package server;
+
 import js.node.Http;
 import js.Node;
 import js.Node.console;

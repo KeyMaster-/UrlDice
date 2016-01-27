@@ -1,3 +1,5 @@
+package client;
+import haxe.ds.GenericStack;
 
 enum DiceToken {
     TRoll(left:Int, right:Int);
@@ -33,74 +35,119 @@ class DiceLexer extends hxparse.Lexer implements hxparse.RuleBuilder {
 
 class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, DiceToken> implements hxparse.ParserBuilder {
         //Record of all individual dice rolls
-    public var rolls:Array<Roll>;
+    public var rolls:Map<Int, Array<Int>>;
+    var shuntStack:GenericStack<DiceToken>;
+    var evalStack:GenericStack<Float>;
+    var evalStackSize:Int = 0;
+
     public function new(input:byte.ByteData) {
-        rolls = [];
+        rolls = new Map();
+        shuntStack = new GenericStack<DiceToken>();
+        evalStack = new GenericStack<Float>();
+
         var lexer = new DiceLexer(input);
         var ts = new hxparse.LexerTokenSource(lexer, DiceLexer.tok);
         super(ts);
     }
 
     public function parse() {
-        return parse_numeric(parse_block()); //Consume the first block since parse_numeric expects an operation
+        while(parse_next()) {} //Repeatedly parse until the function indicates it is done with parsing
+        while(!shuntStack.isEmpty()) {
+            pushToEval(shuntStack.pop());
+        }
+        if(evalStackSize > 1) trace('More than one operand left over on the eval stack - Returning the first one');
+        return evalStack.pop();
     }
 
-        //This parses the next "block", which are all numeric parts connected by multiplications (i.e. 2d6*3*5d7 is one block)
-        //This is necessary to ensure order of operations 
-    function parse_block() {
-        return switch stream {
-            case [TRoll(left, right)]:
+    function parse_next() {
+        switch stream {
+            case [TRoll(l, r)]:
+                pushToEval(last);
+                return true;
+            case [TNumber(n)]:
+                pushToEval(last);
+                return true;
+
+            case [TOperation(op1)]:
+                while(!shuntStack.isEmpty()) {
+                    switch(shuntStack.first()) {
+                        case TOperation(op2):
+                            if(precendence_of(op1) <= precendence_of(op2)) {
+                                pushToEval(shuntStack.pop());
+                            }
+                            else {
+                                break;
+                            }
+                        default:
+                            break;
+                    }
+                }
+                shuntStack.add(last);
+                return true;
+
+            case [TEoF]:
+                return false;
+        }
+    }
+
+    function precendence_of(op:Op) {
+        switch(op) {
+            case plus | minus:
+                return 1;
+            case multiply | divide:
+                return 2;
+        }
+    }
+
+    function pushToEval(token:DiceToken) {
+        switch(token) {
+            case TNumber(n):
+                evalStack.add(n);
+                evalStackSize++;
+
+            case TRoll(left, right):
                 var dice_result = 0;
                 for(i in 0...left) {
                     var res =  Math.floor(Math.random() * right) + 1;
-                    rolls.push({
-                        sidenum:right,
-                        result:res
-                    });
+                    addRollResult(right, res);
                     dice_result += res;
                 }
-                check_mult(dice_result);
 
-            case [TNumber(n)]:
-                check_mult(n);
-        }
-    }
+                evalStack.add(dice_result);
+                evalStackSize++;
 
-        //Looks ahead in the token stream to see if the next operation is a multiplication
-        //If it is, the block parsing continues, otherwise, we stop and return back to parse_numeric (eventually)
-    function check_mult(left:Int):Int {
-        return switch(this.peek(0)) {
-            case TOperation(multiply):
-                this.junk();
-                left * parse_block();
-            case _:
-                left;
-        }
-    }
-        //This handles the actual combination of blocks (through + and - operations)
-    function parse_numeric(total:Int) {
-        return switch stream {
-            case [TOperation(op)]:
+            case TOperation(op) :
+                if(evalStackSize < 2) throw "Not enough operands on the eval stack for operation" + op;
                 switch(op) {
                     case plus:
-                        total += parse_block();
-                        parse_numeric(total);
-
+                        evalStack.add(evalStack.pop() + evalStack.pop());
+                        evalStackSize--; //Popped 2, added 1
                     case minus:
-                        total -= parse_block();
-                        parse_numeric(total);
-                    case multiply, divide:
-                        trace('This should never be reached...');
-                        total;
-                };
+                        var rhs = evalStack.pop();
+                        var lhs = evalStack.pop();
+                        evalStack.add(lhs - rhs);
+                        evalStackSize--;
+                    case multiply:
+                        evalStack.add(evalStack.pop() * evalStack.pop());
+                        evalStackSize--;
+                    case divide:
+                        var rhs = evalStack.pop();
+                        var lhs = evalStack.pop();
+                        evalStack.add(lhs / rhs);
+                        evalStackSize--;
+                }
 
-            case [TEoF]:
-                total;
-        };
+            case TEoF:
+                trace('TEoF was pushed onto the eval stack - Something went wrong!');
+        }
     }
-}
 
-typedef Roll = {
-    var sidenum:Int;
-    var result:Int;
+    inline function addRollResult(sides:Int, result:Int) {
+        if(rolls.exists(sides)) {
+            rolls.get(sides).push(result);
+        }
+        else {
+            rolls.set(sides, [result]);
+        }
+    }
 }

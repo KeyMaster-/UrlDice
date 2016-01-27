@@ -6,26 +6,147 @@ function $extend(from, fields) {
 	if( fields.toString !== Object.prototype.toString ) proto.toString = fields.toString;
 	return proto;
 }
-var DiceToken = { __ename__ : true, __constructs__ : ["TRoll","TOperation","TNumber","TEoF"] };
-DiceToken.TRoll = function(left,right) { var $x = ["TRoll",0,left,right]; $x.__enum__ = DiceToken; $x.toString = $estr; return $x; };
-DiceToken.TOperation = function(op) { var $x = ["TOperation",1,op]; $x.__enum__ = DiceToken; $x.toString = $estr; return $x; };
-DiceToken.TNumber = function(n) { var $x = ["TNumber",2,n]; $x.__enum__ = DiceToken; $x.toString = $estr; return $x; };
-DiceToken.TEoF = ["TEoF",3];
-DiceToken.TEoF.toString = $estr;
-DiceToken.TEoF.__enum__ = DiceToken;
-var Op = { __ename__ : true, __constructs__ : ["plus","minus","multiply","divide"] };
-Op.plus = ["plus",0];
-Op.plus.toString = $estr;
-Op.plus.__enum__ = Op;
-Op.minus = ["minus",1];
-Op.minus.toString = $estr;
-Op.minus.__enum__ = Op;
-Op.multiply = ["multiply",2];
-Op.multiply.toString = $estr;
-Op.multiply.__enum__ = Op;
-Op.divide = ["divide",3];
-Op.divide.toString = $estr;
-Op.divide.__enum__ = Op;
+var EReg = function(r,opt) {
+	opt = opt.split("u").join("");
+	this.r = new RegExp(r,opt);
+};
+EReg.__name__ = true;
+EReg.prototype = {
+	match: function(s) {
+		if(this.r.global) this.r.lastIndex = 0;
+		this.r.m = this.r.exec(s);
+		this.r.s = s;
+		return this.r.m != null;
+	}
+	,matched: function(n) {
+		if(this.r.m != null && n >= 0 && n < this.r.m.length) return this.r.m[n]; else throw new js__$Boot_HaxeError("EReg::matched");
+	}
+	,__class__: EReg
+};
+var HxOverrides = function() { };
+HxOverrides.__name__ = true;
+HxOverrides.cca = function(s,index) {
+	var x = s.charCodeAt(index);
+	if(x != x) return undefined;
+	return x;
+};
+HxOverrides.substr = function(s,pos,len) {
+	if(pos != null && pos != 0 && len != null && len < 0) return "";
+	if(len == null) len = s.length;
+	if(pos < 0) {
+		pos = s.length + pos;
+		if(pos < 0) pos = 0;
+	} else if(len < 0) len = s.length + len - pos;
+	return s.substr(pos,len);
+};
+HxOverrides.indexOf = function(a,obj,i) {
+	var len = a.length;
+	if(i < 0) {
+		i += len;
+		if(i < 0) i = 0;
+	}
+	while(i < len) {
+		if(a[i] === obj) return i;
+		i++;
+	}
+	return -1;
+};
+HxOverrides.remove = function(a,obj) {
+	var i = HxOverrides.indexOf(a,obj,0);
+	if(i == -1) return false;
+	a.splice(i,1);
+	return true;
+};
+HxOverrides.iter = function(a) {
+	return { cur : 0, arr : a, hasNext : function() {
+		return this.cur < this.arr.length;
+	}, next : function() {
+		return this.arr[this.cur++];
+	}};
+};
+var List = function() {
+	this.length = 0;
+};
+List.__name__ = true;
+List.prototype = {
+	push: function(item) {
+		var x = [item,this.h];
+		this.h = x;
+		if(this.q == null) this.q = x;
+		this.length++;
+	}
+	,remove: function(v) {
+		var prev = null;
+		var l = this.h;
+		while(l != null) {
+			if(l[0] == v) {
+				if(prev == null) this.h = l[1]; else prev[1] = l[1];
+				if(this.q == l) this.q = prev;
+				this.length--;
+				return true;
+			}
+			prev = l;
+			l = l[1];
+		}
+		return false;
+	}
+	,__class__: List
+};
+Math.__name__ = true;
+var Std = function() { };
+Std.__name__ = true;
+Std.string = function(s) {
+	return js_Boot.__string_rec(s,"");
+};
+Std.parseInt = function(x) {
+	var v = parseInt(x,10);
+	if(v == 0 && (HxOverrides.cca(x,1) == 120 || HxOverrides.cca(x,1) == 88)) v = parseInt(x);
+	if(isNaN(v)) return null;
+	return v;
+};
+var StringTools = function() { };
+StringTools.__name__ = true;
+StringTools.fastCodeAt = function(s,index) {
+	return s.charCodeAt(index);
+};
+var byte__$ByteData_ByteData_$Impl_$ = {};
+byte__$ByteData_ByteData_$Impl_$.__name__ = true;
+byte__$ByteData_ByteData_$Impl_$.get_length = function(this1) {
+	return this1.length;
+};
+byte__$ByteData_ByteData_$Impl_$.readByte = function(this1,i) {
+	return this1.b[i];
+};
+byte__$ByteData_ByteData_$Impl_$._new = function(data) {
+	return data;
+};
+byte__$ByteData_ByteData_$Impl_$.ofString = function(s) {
+	var data = haxe_io_Bytes.ofString(s);
+	return data;
+};
+byte__$ByteData_ByteData_$Impl_$.readString = function(this1,pos,len) {
+	return this1.getString(pos,len);
+};
+var client_DiceToken = { __ename__ : true, __constructs__ : ["TRoll","TOperation","TNumber","TEoF"] };
+client_DiceToken.TRoll = function(left,right) { var $x = ["TRoll",0,left,right]; $x.__enum__ = client_DiceToken; $x.toString = $estr; return $x; };
+client_DiceToken.TOperation = function(op) { var $x = ["TOperation",1,op]; $x.__enum__ = client_DiceToken; $x.toString = $estr; return $x; };
+client_DiceToken.TNumber = function(n) { var $x = ["TNumber",2,n]; $x.__enum__ = client_DiceToken; $x.toString = $estr; return $x; };
+client_DiceToken.TEoF = ["TEoF",3];
+client_DiceToken.TEoF.toString = $estr;
+client_DiceToken.TEoF.__enum__ = client_DiceToken;
+var client_Op = { __ename__ : true, __constructs__ : ["plus","minus","multiply","divide"] };
+client_Op.plus = ["plus",0];
+client_Op.plus.toString = $estr;
+client_Op.plus.__enum__ = client_Op;
+client_Op.minus = ["minus",1];
+client_Op.minus.toString = $estr;
+client_Op.minus.__enum__ = client_Op;
+client_Op.multiply = ["multiply",2];
+client_Op.multiply.toString = $estr;
+client_Op.multiply.__enum__ = client_Op;
+client_Op.divide = ["divide",3];
+client_Op.divide.toString = $estr;
+client_Op.divide.__enum__ = client_Op;
 var hxparse_Lexer = function(input,sourceName) {
 	if(sourceName == null) sourceName = "<null>";
 	this.current = "";
@@ -546,17 +667,6 @@ hxparse__$LexEngine_Pattern.Plus = function(p) { var $x = ["Plus",3,p]; $x.__enu
 hxparse__$LexEngine_Pattern.Next = function(p1,p2) { var $x = ["Next",4,p1,p2]; $x.__enum__ = hxparse__$LexEngine_Pattern; $x.toString = $estr; return $x; };
 hxparse__$LexEngine_Pattern.Choice = function(p1,p2) { var $x = ["Choice",5,p1,p2]; $x.__enum__ = hxparse__$LexEngine_Pattern; $x.toString = $estr; return $x; };
 hxparse__$LexEngine_Pattern.Group = function(p) { var $x = ["Group",6,p]; $x.__enum__ = hxparse__$LexEngine_Pattern; $x.toString = $estr; return $x; };
-var Std = function() { };
-Std.__name__ = true;
-Std.string = function(s) {
-	return js_Boot.__string_rec(s,"");
-};
-Std.parseInt = function(x) {
-	var v = parseInt(x,10);
-	if(v == 0 && (HxOverrides.cca(x,1) == 120 || HxOverrides.cca(x,1) == 88)) v = parseInt(x);
-	if(isNaN(v)) return null;
-	return v;
-};
 var js_Boot = function() { };
 js_Boot.__name__ = true;
 js_Boot.getClass = function(o) {
@@ -755,11 +865,6 @@ haxe_io_Bytes.prototype = {
 	}
 	,__class__: haxe_io_Bytes
 };
-var StringTools = function() { };
-StringTools.__name__ = true;
-StringTools.fastCodeAt = function(s,index) {
-	return s.charCodeAt(index);
-};
 var hxparse__$LexEngine_Node = function(id,pid) {
 	this.id = id;
 	this.pid = pid;
@@ -781,83 +886,25 @@ hxparse_Ruleset.__name__ = true;
 hxparse_Ruleset.prototype = {
 	__class__: hxparse_Ruleset
 };
-var EReg = function(r,opt) {
-	opt = opt.split("u").join("");
-	this.r = new RegExp(r,opt);
-};
-EReg.__name__ = true;
-EReg.prototype = {
-	match: function(s) {
-		if(this.r.global) this.r.lastIndex = 0;
-		this.r.m = this.r.exec(s);
-		this.r.s = s;
-		return this.r.m != null;
-	}
-	,matched: function(n) {
-		if(this.r.m != null && n >= 0 && n < this.r.m.length) return this.r.m[n]; else throw new js__$Boot_HaxeError("EReg::matched");
-	}
-	,__class__: EReg
-};
-var HxOverrides = function() { };
-HxOverrides.__name__ = true;
-HxOverrides.cca = function(s,index) {
-	var x = s.charCodeAt(index);
-	if(x != x) return undefined;
-	return x;
-};
-HxOverrides.substr = function(s,pos,len) {
-	if(pos != null && pos != 0 && len != null && len < 0) return "";
-	if(len == null) len = s.length;
-	if(pos < 0) {
-		pos = s.length + pos;
-		if(pos < 0) pos = 0;
-	} else if(len < 0) len = s.length + len - pos;
-	return s.substr(pos,len);
-};
-HxOverrides.indexOf = function(a,obj,i) {
-	var len = a.length;
-	if(i < 0) {
-		i += len;
-		if(i < 0) i = 0;
-	}
-	while(i < len) {
-		if(a[i] === obj) return i;
-		i++;
-	}
-	return -1;
-};
-HxOverrides.remove = function(a,obj) {
-	var i = HxOverrides.indexOf(a,obj,0);
-	if(i == -1) return false;
-	a.splice(i,1);
-	return true;
-};
-HxOverrides.iter = function(a) {
-	return { cur : 0, arr : a, hasNext : function() {
-		return this.cur < this.arr.length;
-	}, next : function() {
-		return this.arr[this.cur++];
-	}};
-};
-var DiceLexer = function(input,sourceName) {
+var client_DiceLexer = function(input,sourceName) {
 	hxparse_Lexer.call(this,input,sourceName);
 };
-DiceLexer.__name__ = true;
-DiceLexer.__interfaces__ = [hxparse_RuleBuilder];
-DiceLexer.strToRoll = function(str) {
+client_DiceLexer.__name__ = true;
+client_DiceLexer.__interfaces__ = [hxparse_RuleBuilder];
+client_DiceLexer.strToRoll = function(str) {
 	var regex = new EReg("([1-9][0-9]*)d([1-9][0-9]*)","");
 	regex.match(str);
-	return DiceToken.TRoll(Std.parseInt(regex.matched(1)),Std.parseInt(regex.matched(2)));
+	return client_DiceToken.TRoll(Std.parseInt(regex.matched(1)),Std.parseInt(regex.matched(2)));
 };
-DiceLexer.__super__ = hxparse_Lexer;
-DiceLexer.prototype = $extend(hxparse_Lexer.prototype,{
-	__class__: DiceLexer
+client_DiceLexer.__super__ = hxparse_Lexer;
+client_DiceLexer.prototype = $extend(hxparse_Lexer.prototype,{
+	__class__: client_DiceLexer
 });
-var hxparse_Parser_$hxparse_$LexerTokenSource_$DiceToken_$DiceToken = function(stream) {
+var hxparse_Parser_$hxparse_$LexerTokenSource_$client_$DiceToken_$client_$DiceToken = function(stream) {
 	this.stream = stream;
 };
-hxparse_Parser_$hxparse_$LexerTokenSource_$DiceToken_$DiceToken.__name__ = true;
-hxparse_Parser_$hxparse_$LexerTokenSource_$DiceToken_$DiceToken.prototype = {
+hxparse_Parser_$hxparse_$LexerTokenSource_$client_$DiceToken_$client_$DiceToken.__name__ = true;
+hxparse_Parser_$hxparse_$LexerTokenSource_$client_$DiceToken_$client_$DiceToken.prototype = {
 	peek: function(n) {
 		if(this.token == null) {
 			this.token = new haxe_ds_GenericCell(this.stream.token(),null);
@@ -933,132 +980,141 @@ hxparse_Parser_$hxparse_$LexerTokenSource_$DiceToken_$DiceToken.prototype = {
 	,unexpected: function() {
 		throw new js__$Boot_HaxeError(new hxparse_Unexpected(this.peek(0),this.stream.curPos()));
 	}
-	,__class__: hxparse_Parser_$hxparse_$LexerTokenSource_$DiceToken_$DiceToken
+	,__class__: hxparse_Parser_$hxparse_$LexerTokenSource_$client_$DiceToken_$client_$DiceToken
 };
 var hxparse_ParserBuilder = function() { };
 hxparse_ParserBuilder.__name__ = true;
-var DiceParser = function(input) {
-	this.rolls = [];
-	var lexer = new DiceLexer(input);
-	var ts = new hxparse_LexerTokenSource(lexer,DiceLexer.tok);
-	hxparse_Parser_$hxparse_$LexerTokenSource_$DiceToken_$DiceToken.call(this,ts);
+var client_DiceParser = function(input) {
+	this.evalStackSize = 0;
+	this.rolls = new haxe_ds_IntMap();
+	this.shuntStack = new haxe_ds_GenericStack();
+	this.evalStack = new haxe_ds_GenericStack();
+	var lexer = new client_DiceLexer(input);
+	var ts = new hxparse_LexerTokenSource(lexer,client_DiceLexer.tok);
+	hxparse_Parser_$hxparse_$LexerTokenSource_$client_$DiceToken_$client_$DiceToken.call(this,ts);
 };
-DiceParser.__name__ = true;
-DiceParser.__interfaces__ = [hxparse_ParserBuilder];
-DiceParser.__super__ = hxparse_Parser_$hxparse_$LexerTokenSource_$DiceToken_$DiceToken;
-DiceParser.prototype = $extend(hxparse_Parser_$hxparse_$LexerTokenSource_$DiceToken_$DiceToken.prototype,{
+client_DiceParser.__name__ = true;
+client_DiceParser.__interfaces__ = [hxparse_ParserBuilder];
+client_DiceParser.__super__ = hxparse_Parser_$hxparse_$LexerTokenSource_$client_$DiceToken_$client_$DiceToken;
+client_DiceParser.prototype = $extend(hxparse_Parser_$hxparse_$LexerTokenSource_$client_$DiceToken_$client_$DiceToken.prototype,{
 	parse: function() {
-		return this.parse_numeric(this.parse_block());
+		while(this.parse_next()) {
+		}
+		while(!(this.shuntStack.head == null)) this.pushToEval(this.shuntStack.pop());
+		if(this.evalStackSize > 1) console.log("More than one operand left over on the eval stack - Returning the first one");
+		return this.evalStack.pop();
 	}
-	,parse_block: function() {
+	,parse_next: function() {
 		{
 			var _g = this.peek(0);
 			switch(_g[1]) {
 			case 0:
-				var right = _g[3];
-				var left = _g[2];
+				var r = _g[3];
+				var l = _g[2];
 				this.last = this.token.elt;
 				this.token = this.token.next;
-				var dice_result = 0;
-				var _g1 = 0;
-				while(_g1 < left) {
-					var i = _g1++;
-					var res = Math.floor(Math.random() * right) + 1;
-					this.rolls.push({ sidenum : right, result : res});
-					dice_result += res;
-				}
-				return this.check_mult(dice_result);
+				this.pushToEval(this.last);
+				return true;
 			case 2:
 				var n = _g[2];
 				this.last = this.token.elt;
 				this.token = this.token.next;
-				return this.check_mult(n);
-			default:
-				throw new js__$Boot_HaxeError(new hxparse_NoMatch(this.stream.curPos(),this.peek(0)));
-			}
-		}
-	}
-	,check_mult: function(left) {
-		{
-			var _g = this.peek(0);
-			switch(_g[1]) {
+				this.pushToEval(this.last);
+				return true;
 			case 1:
-				switch(_g[2][1]) {
-				case 2:
-					this.last = this.token.elt;
-					this.token = this.token.next;
-					return left * this.parse_block();
-				default:
-					return left;
-				}
-				break;
-			default:
-				return left;
-			}
-		}
-	}
-	,parse_numeric: function(total) {
-		{
-			var _g = this.peek(0);
-			switch(_g[1]) {
-			case 1:
-				var op = _g[2];
+				var op1 = _g[2];
 				this.last = this.token.elt;
 				this.token = this.token.next;
-				switch(op[1]) {
-				case 0:
-					total += this.parse_block();
-					return this.parse_numeric(total);
-				case 1:
-					total -= this.parse_block();
-					return this.parse_numeric(total);
-				case 2:case 3:
-					console.log("This should never be reached...");
-					return total;
-				}
-				break;
+				try {
+					while(!(this.shuntStack.head == null)) {
+						var _g1 = this.shuntStack.first();
+						if(_g1 != null) switch(_g1[1]) {
+						case 1:
+							var op2 = _g1[2];
+							if(this.precendence_of(op1) <= this.precendence_of(op2)) this.pushToEval(this.shuntStack.pop()); else throw "__break__";
+							break;
+						default:
+							throw "__break__";
+						} else throw "__break__";
+					}
+				} catch( e ) { if( e != "__break__" ) throw e; }
+				this.shuntStack.add(this.last);
+				return true;
 			case 3:
 				this.last = this.token.elt;
 				this.token = this.token.next;
-				return total;
-			default:
-				throw new js__$Boot_HaxeError(new hxparse_NoMatch(this.stream.curPos(),this.peek(0)));
+				return false;
 			}
 		}
 	}
-	,__class__: DiceParser
+	,precendence_of: function(op) {
+		switch(op[1]) {
+		case 0:case 1:
+			return 1;
+		case 2:case 3:
+			return 2;
+		}
+	}
+	,pushToEval: function(token) {
+		switch(token[1]) {
+		case 2:
+			var n = token[2];
+			this.evalStack.add(n);
+			this.evalStackSize++;
+			break;
+		case 0:
+			var right = token[3];
+			var left = token[2];
+			var dice_result = 0;
+			var _g = 0;
+			while(_g < left) {
+				var i = _g++;
+				var res = Math.floor(Math.random() * right) + 1;
+				if(this.rolls.h.hasOwnProperty(right)) this.rolls.h[right].push(res); else this.rolls.h[right] = [res];
+				dice_result += res;
+			}
+			this.evalStack.add(dice_result);
+			this.evalStackSize++;
+			break;
+		case 1:
+			var op = token[2];
+			if(this.evalStackSize < 2) throw new js__$Boot_HaxeError("Not enough operands on the eval stack for operation" + Std.string(op));
+			switch(op[1]) {
+			case 0:
+				this.evalStack.add(this.evalStack.pop() + this.evalStack.pop());
+				this.evalStackSize--;
+				break;
+			case 1:
+				var rhs = this.evalStack.pop();
+				var lhs = this.evalStack.pop();
+				this.evalStack.add(lhs - rhs);
+				this.evalStackSize--;
+				break;
+			case 2:
+				this.evalStack.add(this.evalStack.pop() * this.evalStack.pop());
+				this.evalStackSize--;
+				break;
+			case 3:
+				var rhs1 = this.evalStack.pop();
+				var lhs1 = this.evalStack.pop();
+				this.evalStack.add(lhs1 / rhs1);
+				this.evalStackSize--;
+				break;
+			}
+			break;
+		case 3:
+			console.log("TEoF was pushed onto the eval stack - Something went wrong!");
+			break;
+		}
+	}
+	,addRollResult: function(sides,result) {
+		if(this.rolls.h.hasOwnProperty(sides)) this.rolls.h[sides].push(result); else this.rolls.h[sides] = [result];
+	}
+	,__class__: client_DiceParser
 });
-var List = function() {
-	this.length = 0;
-};
-List.__name__ = true;
-List.prototype = {
-	push: function(item) {
-		var x = [item,this.h];
-		this.h = x;
-		if(this.q == null) this.q = x;
-		this.length++;
-	}
-	,remove: function(v) {
-		var prev = null;
-		var l = this.h;
-		while(l != null) {
-			if(l[0] == v) {
-				if(prev == null) this.h = l[1]; else prev[1] = l[1];
-				if(this.q == l) this.q = prev;
-				this.length--;
-				return true;
-			}
-			prev = l;
-			l = l[1];
-		}
-		return false;
-	}
-	,__class__: List
-};
-var Main = function() { };
-Main.__name__ = true;
-Main.main = function() {
+var client_Main = function() { };
+client_Main.__name__ = true;
+client_Main.main = function() {
 	var doc = window.document;
 	var input = window.location.pathname;
 	var base_url = doc.getElementById("base").attributes.getNamedItem("href").value;
@@ -1066,7 +1122,7 @@ Main.main = function() {
 	var dice_regex = new EReg("^(\\d+d\\d+|\\d+)([+\\-*/](\\d+d\\d+|\\d+))*$","i");
 	var matched_regex = dice_regex.match(input);
 	if(!matched_regex) input = "1d6";
-	var parser = new DiceParser((function($this) {
+	var parser = new client_DiceParser((function($this) {
 		var $r;
 		var data = haxe_io_Bytes.ofString(input);
 		$r = data;
@@ -1092,37 +1148,16 @@ Main.main = function() {
 	cell.innerHTML = "<b>Die</b>";
 	cell = row.insertCell();
 	cell.innerHTML = "<b>Value</b>";
-	var _g = 0;
-	var _g1 = parser.rolls;
-	while(_g < _g1.length) {
-		var roll = _g1[_g];
-		++_g;
+	var $it0 = parser.rolls.keys();
+	while( $it0.hasNext() ) {
+		var key = $it0.next();
 		row = js_Boot.__cast(table.insertRow() , HTMLTableRowElement);
 		cell = row.insertCell();
-		cell.innerHTML = "" + roll.sidenum;
+		cell.innerHTML = "" + key;
 		cell = row.insertCell();
-		cell.innerHTML = "" + roll.result;
+		cell.innerHTML = parser.rolls.h[key].join(", ");
 	}
 	doc.body.appendChild(table);
-};
-Math.__name__ = true;
-var byte__$ByteData_ByteData_$Impl_$ = {};
-byte__$ByteData_ByteData_$Impl_$.__name__ = true;
-byte__$ByteData_ByteData_$Impl_$.get_length = function(this1) {
-	return this1.length;
-};
-byte__$ByteData_ByteData_$Impl_$.readByte = function(this1,i) {
-	return this1.b[i];
-};
-byte__$ByteData_ByteData_$Impl_$._new = function(data) {
-	return data;
-};
-byte__$ByteData_ByteData_$Impl_$.ofString = function(s) {
-	var data = haxe_io_Bytes.ofString(s);
-	return data;
-};
-byte__$ByteData_ByteData_$Impl_$.readString = function(this1,pos,len) {
-	return this1.getString(pos,len);
 };
 var haxe_IMap = function() { };
 haxe_IMap.__name__ = true;
@@ -1141,6 +1176,40 @@ var haxe_ds_GenericCell = function(elt,next) {
 haxe_ds_GenericCell.__name__ = true;
 haxe_ds_GenericCell.prototype = {
 	__class__: haxe_ds_GenericCell
+};
+var haxe_ds_GenericStack = function() {
+};
+haxe_ds_GenericStack.__name__ = true;
+haxe_ds_GenericStack.prototype = {
+	add: function(item) {
+		this.head = new haxe_ds_GenericCell(item,this.head);
+	}
+	,first: function() {
+		if(this.head == null) return null; else return this.head.elt;
+	}
+	,pop: function() {
+		var k = this.head;
+		if(k == null) return null; else {
+			this.head = k.next;
+			return k.elt;
+		}
+	}
+	,__class__: haxe_ds_GenericStack
+};
+var haxe_ds_IntMap = function() {
+	this.h = { };
+};
+haxe_ds_IntMap.__name__ = true;
+haxe_ds_IntMap.__interfaces__ = [haxe_IMap];
+haxe_ds_IntMap.prototype = {
+	keys: function() {
+		var a = [];
+		for( var key in this.h ) {
+		if(this.h.hasOwnProperty(key)) a.push(key | 0);
+		}
+		return HxOverrides.iter(a);
+	}
+	,__class__: haxe_ds_IntMap
 };
 var haxe_ds_StringMap = function() {
 	this.h = { };
@@ -1630,6 +1699,9 @@ js_html_compat_Uint8Array._subarray = function(start,end) {
 	a.byteOffset = start;
 	return a;
 };
+if(Array.prototype.indexOf) HxOverrides.indexOf = function(a,o,i) {
+	return Array.prototype.indexOf.call(a,o,i);
+};
 String.prototype.__class__ = String;
 String.__name__ = true;
 Array.__name__ = true;
@@ -1641,9 +1713,6 @@ var Bool = Boolean;
 Bool.__ename__ = ["Bool"];
 var Class = { __name__ : ["Class"]};
 var Enum = { };
-if(Array.prototype.indexOf) HxOverrides.indexOf = function(a,o,i) {
-	return Array.prototype.indexOf.call(a,o,i);
-};
 var __map_reserved = {}
 var ArrayBuffer = $global.ArrayBuffer || js_html_compat_ArrayBuffer;
 if(ArrayBuffer.prototype.slice == null) ArrayBuffer.prototype.slice = js_html_compat_ArrayBuffer.sliceImpl;
@@ -1653,22 +1722,22 @@ hxparse_LexEngine.MAX_CODE = 255;
 hxparse_LexEngine.EMPTY = [];
 hxparse_LexEngine.ALL_CHARS = [{ min : 0, max : 255}];
 js_Boot.__toStr = {}.toString;
-DiceLexer.tok = hxparse_Lexer.buildRuleset([{ rule : "[1-9][0-9]*d[1-9][0-9]*", func : function(lexer) {
-	return DiceLexer.strToRoll(lexer.current);
+client_DiceLexer.tok = hxparse_Lexer.buildRuleset([{ rule : "[1-9][0-9]*d[1-9][0-9]*", func : function(lexer) {
+	return client_DiceLexer.strToRoll(lexer.current);
 }},{ rule : "\\+", func : function(lexer1) {
-	return DiceToken.TOperation(Op.plus);
+	return client_DiceToken.TOperation(client_Op.plus);
 }},{ rule : "\\-", func : function(lexer2) {
-	return DiceToken.TOperation(Op.minus);
+	return client_DiceToken.TOperation(client_Op.minus);
 }},{ rule : "\\*", func : function(lexer3) {
-	return DiceToken.TOperation(Op.multiply);
+	return client_DiceToken.TOperation(client_Op.multiply);
 }},{ rule : "/", func : function(lexer4) {
-	return DiceToken.TOperation(Op.divide);
+	return client_DiceToken.TOperation(client_Op.divide);
 }},{ rule : "[0-9]+", func : function(lexer5) {
-	return DiceToken.TNumber(Std.parseInt(lexer5.current));
+	return client_DiceToken.TNumber(Std.parseInt(lexer5.current));
 }},{ rule : "", func : function(lexer6) {
-	return DiceToken.TEoF;
+	return client_DiceToken.TEoF;
 }}],"tok");
-DiceLexer.generatedRulesets = [DiceLexer.tok];
+client_DiceLexer.generatedRulesets = [client_DiceLexer.tok];
 haxe_io_FPHelper.i64tmp = (function($this) {
 	var $r;
 	var x = new haxe__$Int64__$_$_$Int64(0,0);
@@ -1676,5 +1745,5 @@ haxe_io_FPHelper.i64tmp = (function($this) {
 	return $r;
 }(this));
 js_html_compat_Uint8Array.BYTES_PER_ELEMENT = 1;
-Main.main();
+client_Main.main();
 })(typeof console != "undefined" ? console : {log:function(){}}, typeof window != "undefined" ? window : typeof global != "undefined" ? global : typeof self != "undefined" ? self : this);

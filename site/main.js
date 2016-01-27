@@ -6,21 +6,6 @@ function $extend(from, fields) {
 	if( fields.toString !== Object.prototype.toString ) proto.toString = fields.toString;
 	return proto;
 }
-var Main = function() { };
-Main.__name__ = true;
-Main.main = function() {
-	js_node_Http.createServer(function(req,res) {
-		var requestedFile = "index.html";
-		console.log(js_node_Path.basename(req.url));
-		if(js_node_Path.basename(req.url) == "client.js") requestedFile = "client.js";
-		js_node_Fs.readFile(js_node_Path.resolve(__dirname,requestedFile),"UTF-8",function(err,data) {
-			res.writeHead(200,{ 'Content-Type' : "text/html", 'Content-Length' : data.length});
-			res.write(data);
-			res.end();
-		});
-	}).listen(Main.listen_port,Main.listen_url);
-	console.log("server / Running at http://" + Main.listen_url + ":" + Main.listen_port + "/");
-};
 Math.__name__ = true;
 var Std = function() { };
 Std.__name__ = true;
@@ -420,6 +405,21 @@ js_html_compat_Uint8Array._subarray = function(start,end) {
 var js_node_Fs = require("fs");
 var js_node_Http = require("http");
 var js_node_Path = require("path");
+var server_Main = function() { };
+server_Main.__name__ = true;
+server_Main.main = function() {
+	js_node_Http.createServer(function(req,res) {
+		var requestedFile = "index.html";
+		console.log(js_node_Path.basename(req.url));
+		if(js_node_Path.basename(req.url) == "client.js") requestedFile = "client.js";
+		js_node_Fs.readFile(js_node_Path.resolve(__dirname,requestedFile),"UTF-8",function(err,data) {
+			res.writeHead(200,{ 'Content-Type' : "text/html", 'Content-Length' : data.length});
+			res.write(data);
+			res.end();
+		});
+	}).listen(server_Main.listen_port,server_Main.listen_url);
+	console.log("server / Running at http://" + server_Main.listen_url + ":" + server_Main.listen_port + "/");
+};
 String.prototype.__class__ = String;
 String.__name__ = true;
 Array.__name__ = true;
@@ -435,8 +435,6 @@ var ArrayBuffer = $global.ArrayBuffer || js_html_compat_ArrayBuffer;
 if(ArrayBuffer.prototype.slice == null) ArrayBuffer.prototype.slice = js_html_compat_ArrayBuffer.sliceImpl;
 var DataView = $global.DataView || js_html_compat_DataView;
 var Uint8Array = $global.Uint8Array || js_html_compat_Uint8Array._new;
-Main.listen_url = "127.0.0.1";
-Main.listen_port = 8080;
 haxe_io_FPHelper.i64tmp = (function($this) {
 	var $r;
 	var x = new haxe__$Int64__$_$_$Int64(0,0);
@@ -445,5 +443,7 @@ haxe_io_FPHelper.i64tmp = (function($this) {
 }(this));
 js_Boot.__toStr = {}.toString;
 js_html_compat_Uint8Array.BYTES_PER_ELEMENT = 1;
-Main.main();
+server_Main.listen_url = "127.0.0.1";
+server_Main.listen_port = 8080;
+server_Main.main();
 })(typeof console != "undefined" ? console : {log:function(){}}, typeof window != "undefined" ? window : typeof global != "undefined" ? global : typeof self != "undefined" ? self : this);

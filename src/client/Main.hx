@@ -1,4 +1,4 @@
-package ;
+package client;
 
 class Main {
     public static function main() {
@@ -40,12 +40,12 @@ class Main {
         cell = row.insertCell();
         cell.innerHTML = '<b>Value</b>';
         
-        for(roll in parser.rolls) {
+        for(key in parser.rolls.keys()) {
             row = cast(table.insertRow(), js.html.TableRowElement);
             cell = row.insertCell();
-            cell.innerHTML = '${roll.sidenum}';
+            cell.innerHTML = '$key';
             cell = row.insertCell();
-            cell.innerHTML = '${roll.result}';
+            cell.innerHTML = parser.rolls.get(key).join(', ');
         }
 
         doc.body.appendChild(table);
