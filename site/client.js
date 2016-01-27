@@ -13,7 +13,7 @@ DiceToken.TNumber = function(n) { var $x = ["TNumber",2,n]; $x.__enum__ = DiceTo
 DiceToken.TEoF = ["TEoF",3];
 DiceToken.TEoF.toString = $estr;
 DiceToken.TEoF.__enum__ = DiceToken;
-var Op = { __ename__ : true, __constructs__ : ["plus","minus","multiply"] };
+var Op = { __ename__ : true, __constructs__ : ["plus","minus","multiply","divide"] };
 Op.plus = ["plus",0];
 Op.plus.toString = $estr;
 Op.plus.__enum__ = Op;
@@ -23,6 +23,9 @@ Op.minus.__enum__ = Op;
 Op.multiply = ["multiply",2];
 Op.multiply.toString = $estr;
 Op.multiply.__enum__ = Op;
+Op.divide = ["divide",3];
+Op.divide.toString = $estr;
+Op.divide.__enum__ = Op;
 var hxparse_Lexer = function(input,sourceName) {
 	if(sourceName == null) sourceName = "<null>";
 	this.current = "";
@@ -1009,7 +1012,7 @@ DiceParser.prototype = $extend(hxparse_Parser_$hxparse_$LexerTokenSource_$DiceTo
 				case 1:
 					total -= this.parse_block();
 					return this.parse_numeric(total);
-				case 2:
+				case 2:case 3:
 					console.log("This should never be reached...");
 					return total;
 				}
@@ -1056,11 +1059,11 @@ List.prototype = {
 var Main = function() { };
 Main.__name__ = true;
 Main.main = function() {
+	var doc = window.document;
 	var input = window.location.pathname;
-	var pos = input.lastIndexOf("/") + 1;
-	input = HxOverrides.substr(input,pos,null);
-	console.log(input);
-	var dice_regex = new EReg("^(\\d+d\\d+|\\d+)([+\\-*](\\d+d\\d+|\\d+))*$","i");
+	var base_url = doc.getElementById("base").attributes.getNamedItem("href").value;
+	input = HxOverrides.substr(input,base_url.length,null);
+	var dice_regex = new EReg("^(\\d+d\\d+|\\d+)([+\\-*/](\\d+d\\d+|\\d+))*$","i");
 	var matched_regex = dice_regex.match(input);
 	if(!matched_regex) input = "1d6";
 	var parser = new DiceParser((function($this) {
@@ -1071,7 +1074,6 @@ Main.main = function() {
 	}(this)));
 	var dice_result = parser.parse();
 	window.history.pushState(null,"DiceUrl","" + input);
-	var doc = window.document;
 	var div = doc.createElement("div");
 	div.align = "center";
 	div.innerHTML = "<h1>Result: " + dice_result + "</h1>";
@@ -1659,9 +1661,11 @@ DiceLexer.tok = hxparse_Lexer.buildRuleset([{ rule : "[1-9][0-9]*d[1-9][0-9]*", 
 	return DiceToken.TOperation(Op.minus);
 }},{ rule : "\\*", func : function(lexer3) {
 	return DiceToken.TOperation(Op.multiply);
-}},{ rule : "[0-9]+", func : function(lexer4) {
-	return DiceToken.TNumber(Std.parseInt(lexer4.current));
-}},{ rule : "", func : function(lexer5) {
+}},{ rule : "/", func : function(lexer4) {
+	return DiceToken.TOperation(Op.divide);
+}},{ rule : "[0-9]+", func : function(lexer5) {
+	return DiceToken.TNumber(Std.parseInt(lexer5.current));
+}},{ rule : "", func : function(lexer6) {
 	return DiceToken.TEoF;
 }}],"tok");
 DiceLexer.generatedRulesets = [DiceLexer.tok];

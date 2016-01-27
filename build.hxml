@@ -1,4 +1,12 @@
--lib hxparse
--cp src/
+-lib hxnodejs
+-cp src/server
 -main Main
--js www/main.js
+-js site/main.js
+-D -js-es5
+
+--next
+
+-lib hxparse
+-cp src/client
+-main Main
+-js site/client.js

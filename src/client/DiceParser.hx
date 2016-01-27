@@ -10,6 +10,7 @@ enum Op {
     plus;
     minus;
     multiply;
+    divide;
 }
 
 class DiceLexer extends hxparse.Lexer implements hxparse.RuleBuilder {
@@ -18,6 +19,7 @@ class DiceLexer extends hxparse.Lexer implements hxparse.RuleBuilder {
         "\\+" => TOperation(plus),
         "\\-" => TOperation(minus),
         "\\*" => TOperation(multiply),
+        "/" => TOperation(divide),
         "[0-9]+" => TNumber(Std.parseInt(lexer.current)),
         "" => TEoF
     ];
@@ -87,7 +89,7 @@ class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, Dic
                     case minus:
                         total -= parse_block();
                         parse_numeric(total);
-                    case multiply:
+                    case multiply, divide:
                         trace('This should never be reached...');
                         total;
                 };

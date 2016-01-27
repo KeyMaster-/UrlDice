@@ -3,10 +3,13 @@ package ;
 class Main {
     public static function main() {
 
+        var doc = js.Browser.window.document;
+
         var input = js.Browser.location.pathname;
-        input = input.substr(input.lastIndexOf("/") + 1);
-        trace(input);
-        var dice_regex = ~/^(\d+d\d+|\d+)([+\-*](\d+d\d+|\d+))*$/i;
+
+        var base_url = doc.getElementById('base').attributes.getNamedItem('href').value;
+        input = input.substr(base_url.length);
+        var dice_regex = ~/^(\d+d\d+|\d+)([+\-*\/](\d+d\d+|\d+))*$/i;
         var matched_regex = dice_regex.match(input);
         if(!matched_regex) {
             input = "1d6";
@@ -16,8 +19,6 @@ class Main {
         var dice_result = parser.parse();
 
         js.Browser.window.history.pushState(null, "DiceUrl", '$input');
-
-        var doc = js.Browser.window.document;
 
         var div = doc.createDivElement();
         div.align = 'center';
