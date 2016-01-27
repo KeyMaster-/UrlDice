@@ -127,11 +127,17 @@ byte__$ByteData_ByteData_$Impl_$.ofString = function(s) {
 byte__$ByteData_ByteData_$Impl_$.readString = function(this1,pos,len) {
 	return this1.getString(pos,len);
 };
-var client_DiceToken = { __ename__ : true, __constructs__ : ["TRoll","TOperation","TNumber","TEoF"] };
+var client_DiceToken = { __ename__ : true, __constructs__ : ["TRoll","TOperation","TNumber","TPLeft","TPRight","TEoF"] };
 client_DiceToken.TRoll = function(left,right) { var $x = ["TRoll",0,left,right]; $x.__enum__ = client_DiceToken; $x.toString = $estr; return $x; };
 client_DiceToken.TOperation = function(op) { var $x = ["TOperation",1,op]; $x.__enum__ = client_DiceToken; $x.toString = $estr; return $x; };
 client_DiceToken.TNumber = function(n) { var $x = ["TNumber",2,n]; $x.__enum__ = client_DiceToken; $x.toString = $estr; return $x; };
-client_DiceToken.TEoF = ["TEoF",3];
+client_DiceToken.TPLeft = ["TPLeft",3];
+client_DiceToken.TPLeft.toString = $estr;
+client_DiceToken.TPLeft.__enum__ = client_DiceToken;
+client_DiceToken.TPRight = ["TPRight",4];
+client_DiceToken.TPRight.toString = $estr;
+client_DiceToken.TPRight.__enum__ = client_DiceToken;
+client_DiceToken.TEoF = ["TEoF",5];
 client_DiceToken.TEoF.toString = $estr;
 client_DiceToken.TEoF.__enum__ = client_DiceToken;
 var client_Op = { __ename__ : true, __constructs__ : ["plus","minus","multiply","divide"] };
@@ -1001,7 +1007,7 @@ client_DiceParser.prototype = $extend(hxparse_Parser_$hxparse_$LexerTokenSource_
 		while(this.parse_next()) {
 		}
 		while(!(this.shuntStack.head == null)) this.pushToEval(this.shuntStack.pop());
-		if(this.evalStackSize > 1) console.log("More than one operand left over on the eval stack - Returning the first one");
+		if(this.evalStackSize > 1) throw new js__$Boot_HaxeError(2);
 		return this.evalStack.pop();
 	}
 	,parse_next: function() {
@@ -1043,6 +1049,23 @@ client_DiceParser.prototype = $extend(hxparse_Parser_$hxparse_$LexerTokenSource_
 			case 3:
 				this.last = this.token.elt;
 				this.token = this.token.next;
+				this.shuntStack.add(this.last);
+				return true;
+			case 4:
+				this.last = this.token.elt;
+				this.token = this.token.next;
+				while(this.shuntStack.first() != client_DiceToken.TPLeft) {
+					this.pushToEval(this.shuntStack.pop());
+					if(this.shuntStack.head == null) {
+						console.log("mismatch while parsing right paren");
+						throw new js__$Boot_HaxeError(0);
+					}
+				}
+				if(this.shuntStack.pop() == null) throw new js__$Boot_HaxeError(0);
+				return true;
+			case 5:
+				this.last = this.token.elt;
+				this.token = this.token.next;
 				return false;
 			}
 		}
@@ -1078,7 +1101,7 @@ client_DiceParser.prototype = $extend(hxparse_Parser_$hxparse_$LexerTokenSource_
 			break;
 		case 1:
 			var op = token[2];
-			if(this.evalStackSize < 2) throw new js__$Boot_HaxeError("Not enough operands on the eval stack for operation" + Std.string(op));
+			if(this.evalStackSize < 2) throw new js__$Boot_HaxeError(1);
 			switch(op[1]) {
 			case 0:
 				this.evalStack.add(this.evalStack.pop() + this.evalStack.pop());
@@ -1102,8 +1125,11 @@ client_DiceParser.prototype = $extend(hxparse_Parser_$hxparse_$LexerTokenSource_
 				break;
 			}
 			break;
-		case 3:
-			console.log("TEoF was pushed onto the eval stack - Something went wrong!");
+		case 5:
+			throw new js__$Boot_HaxeError(3);
+			break;
+		case 3:case 4:
+			throw new js__$Boot_HaxeError(0);
 			break;
 		}
 	}
@@ -1119,25 +1145,43 @@ client_Main.main = function() {
 	var input = window.location.pathname;
 	var base_url = doc.getElementById("base").attributes.getNamedItem("href").value;
 	input = HxOverrides.substr(input,base_url.length,null);
-	var dice_regex = new EReg("^(\\d+d\\d+|\\d+)([+\\-*/](\\d+d\\d+|\\d+))*$","i");
-	var matched_regex = dice_regex.match(input);
-	if(!matched_regex) input = "1d6";
+	var dice_regex = new EReg("^\\(*(\\d+d\\d+|\\d+)([+\\-*/]\\(*(\\d+d\\d+|\\d+)\\)*)*\\)*$","i");
+	var input_correct = dice_regex.match(input);
 	var parser = new client_DiceParser((function($this) {
 		var $r;
 		var data = haxe_io_Bytes.ofString(input);
 		$r = data;
 		return $r;
 	}(this)));
-	var dice_result = parser.parse();
-	window.history.pushState(null,"DiceUrl","" + input);
+	var dice_result = 0.0;
+	var error_message = "Your input was incorrect, ";
+	try {
+		dice_result = parser.parse();
+	} catch( e ) {
+		if (e instanceof js__$Boot_HaxeError) e = e.val;
+		if( js_Boot.__instanceof(e,Int) ) {
+			input_correct = false;
+			switch(e) {
+			case 0:
+				error_message += "you either forgot a bracket, or have too many.";
+				break;
+			case 1:
+				error_message += "you may have forgotten a number or dice roll in your input.";
+				break;
+			case 2:case 3:
+				error_message = "Something went wrong here.<br>" + ("Please tweet the url you typed in, what browser you're using and the number " + e + " to <a href=\"https://www.twitter.com/Keymaster_\">@Keymaster_</a> and I will try to fix this. Thank you!");
+				break;
+			}
+		} else throw(e);
+	}
 	var div = doc.createElement("div");
 	div.align = "center";
 	div.innerHTML = "<h1>Result: " + dice_result + "</h1>";
 	doc.body.appendChild(div);
-	if(!matched_regex) {
+	if(!input_correct) {
 		div = doc.createElement("div");
 		div.align = "center";
-		div.innerHTML = "(Your input was incorrect, so we rolled a d6 for you)<br><br>";
+		div.innerHTML = error_message += "<br><br>";
 		doc.body.appendChild(div);
 	}
 	var table = doc.createElement("table");
@@ -1732,9 +1776,13 @@ client_DiceLexer.tok = hxparse_Lexer.buildRuleset([{ rule : "[1-9][0-9]*d[1-9][0
 	return client_DiceToken.TOperation(client_Op.multiply);
 }},{ rule : "/", func : function(lexer4) {
 	return client_DiceToken.TOperation(client_Op.divide);
-}},{ rule : "[0-9]+", func : function(lexer5) {
-	return client_DiceToken.TNumber(Std.parseInt(lexer5.current));
-}},{ rule : "", func : function(lexer6) {
+}},{ rule : "\\(", func : function(lexer5) {
+	return client_DiceToken.TPLeft;
+}},{ rule : "\\)", func : function(lexer6) {
+	return client_DiceToken.TPRight;
+}},{ rule : "[0-9]+", func : function(lexer7) {
+	return client_DiceToken.TNumber(Std.parseInt(lexer7.current));
+}},{ rule : "", func : function(lexer8) {
 	return client_DiceToken.TEoF;
 }}],"tok");
 client_DiceLexer.generatedRulesets = [client_DiceLexer.tok];

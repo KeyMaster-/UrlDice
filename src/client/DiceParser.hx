@@ -5,6 +5,9 @@ enum DiceToken {
     TRoll(left:Int, right:Int);
     TOperation(op:Op);
     TNumber(n:Int);
+    //Left and right parentheses
+    TPLeft;
+    TPRight;
     TEoF;
 }
 
@@ -22,6 +25,8 @@ class DiceLexer extends hxparse.Lexer implements hxparse.RuleBuilder {
         "\\-" => TOperation(minus),
         "\\*" => TOperation(multiply),
         "/" => TOperation(divide),
+        "\\(" => TPLeft,
+        "\\)" => TPRight,
         "[0-9]+" => TNumber(Std.parseInt(lexer.current)),
         "" => TEoF
     ];
@@ -55,7 +60,7 @@ class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, Dic
         while(!shuntStack.isEmpty()) {
             pushToEval(shuntStack.pop());
         }
-        if(evalStackSize > 1) trace('More than one operand left over on the eval stack - Returning the first one');
+        if(evalStackSize > 1) throw EvalStackTooBig;
         return evalStack.pop();
     }
 
@@ -85,6 +90,20 @@ class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, Dic
                 shuntStack.add(last);
                 return true;
 
+            case [TPLeft]:
+                shuntStack.add(last);
+                return true;
+
+            case [TPRight]:
+                while(shuntStack.first() != TPLeft) {
+                    pushToEval(shuntStack.pop());
+                    if(shuntStack.isEmpty()) {
+                        trace('mismatch while parsing right paren');
+                        throw ParenMismatch;
+                    }
+                }
+                if(shuntStack.pop() == null) throw ParenMismatch;
+                return true;
             case [TEoF]:
                 return false;
         }
@@ -117,7 +136,7 @@ class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, Dic
                 evalStackSize++;
 
             case TOperation(op) :
-                if(evalStackSize < 2) throw "Not enough operands on the eval stack for operation" + op;
+                if(evalStackSize < 2) throw NotEnoughOperands;
                 switch(op) {
                     case plus:
                         evalStack.add(evalStack.pop() + evalStack.pop());
@@ -138,7 +157,10 @@ class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, Dic
                 }
 
             case TEoF:
-                trace('TEoF was pushed onto the eval stack - Something went wrong!');
+                throw TEoFInEvalStack;
+
+            case TPLeft | TPRight:
+                throw ParenMismatch;
         }
     }
 
@@ -150,4 +172,12 @@ class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, Dic
             rolls.set(sides, [result]);
         }
     }
+}
+
+@:enum
+abstract ParsingError(Int) from Int to Int {
+    var ParenMismatch = 0;
+    var NotEnoughOperands = 1;
+    var EvalStackTooBig = 2;
+    var TEoFInEvalStack = 3;
 }

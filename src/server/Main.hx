@@ -13,7 +13,6 @@ class Main {
     static function main() {
         Http.createServer(function(req, res) {
             var requestedFile = 'index.html';
-            console.log(Path.basename(req.url));
             if(Path.basename(req.url) == 'client.js') {
                 requestedFile = 'client.js';
             }

@@ -410,7 +410,6 @@ server_Main.__name__ = true;
 server_Main.main = function() {
 	js_node_Http.createServer(function(req,res) {
 		var requestedFile = "index.html";
-		console.log(js_node_Path.basename(req.url));
 		if(js_node_Path.basename(req.url) == "client.js") requestedFile = "client.js";
 		js_node_Fs.readFile(js_node_Path.resolve(__dirname,requestedFile),"UTF-8",function(err,data) {
 			res.writeHead(200,{ 'Content-Type' : "text/html", 'Content-Length' : data.length});
