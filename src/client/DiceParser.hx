@@ -3,7 +3,7 @@ import haxe.ds.GenericStack;
 
 enum DiceToken {
     TRoll(left:Int, right:Int);
-    TOperation(op:Op);
+    TOperator(op:Op);
     TNumber(n:Int);
     //Left and right parentheses
     TPLeft;
@@ -16,18 +16,24 @@ enum Op {
     minus;
     multiply;
     divide;
+    gt;
+    gte;
+    lt;
+    lte;
+    eq;
 }
 
 class DiceLexer extends hxparse.Lexer implements hxparse.RuleBuilder {
     static public var tok = @:rule [
         "[1-9][0-9]*d[1-9][0-9]*" => strToRoll(lexer.current),
-        "\\+" => TOperation(plus),
-        "\\-" => TOperation(minus),
-        "\\*" => TOperation(multiply),
-        "/" => TOperation(divide),
+        "\\+" => TOperator(plus),
+        "\\-" => TOperator(minus),
+        "\\*" => TOperator(multiply),
+        "/" => TOperator(divide),
         "\\(" => TPLeft,
         "\\)" => TPRight,
         "[0-9]+" => TNumber(Std.parseInt(lexer.current)),
+        "(<|<=|>=|>|=)" => TOperator(strToCompOp(lexer.current)),
         "" => TEoF
     ];
 
@@ -36,11 +42,32 @@ class DiceLexer extends hxparse.Lexer implements hxparse.RuleBuilder {
         regex.match(str);
         return TRoll(Std.parseInt(regex.matched(1)), Std.parseInt(regex.matched(2)));
     }
+
+    static function strToCompOp(str:String) {
+        var regex = ~/(<=|>=|<|>|=)/;
+        regex.match(str);
+        return switch(regex.matched(1)) {
+            case '<':
+                lt;
+            case '<=':
+                lte;
+            case '>':
+                gt;
+            case '>=':
+                gte;
+            case '=':
+                eq;
+            case _:
+                eq; //This will never be the case, so doesn't matter what we return;
+        }
+    }
 }
 
 class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, DiceToken> implements hxparse.ParserBuilder {
         //Record of all individual dice rolls
     public var rolls:Map<Int, Array<Int>>;
+    public var isComparison:Bool = false;
+
     var shuntStack:GenericStack<DiceToken>;
     var evalStack:GenericStack<Float>;
     var evalStackSize:Int = 0;
@@ -73,10 +100,10 @@ class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, Dic
                 pushToEval(last);
                 return true;
 
-            case [TOperation(op1)]:
+            case [TOperator(op1)]:
                 while(!shuntStack.isEmpty()) {
                     switch(shuntStack.first()) {
-                        case TOperation(op2):
+                        case TOperator(op2):
                             if(precendence_of(op1) <= precendence_of(op2)) {
                                 pushToEval(shuntStack.pop());
                             }
@@ -98,7 +125,6 @@ class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, Dic
                 while(shuntStack.first() != TPLeft) {
                     pushToEval(shuntStack.pop());
                     if(shuntStack.isEmpty()) {
-                        trace('mismatch while parsing right paren');
                         throw ParenMismatch;
                     }
                 }
@@ -111,10 +137,12 @@ class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, Dic
 
     function precendence_of(op:Op) {
         switch(op) {
-            case plus | minus:
+            case lt | lte | gt | gte | eq:
                 return 1;
-            case multiply | divide:
+            case plus | minus:
                 return 2;
+            case multiply | divide:
+                return 3;
         }
     }
 
@@ -135,7 +163,7 @@ class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, Dic
                 evalStack.add(dice_result);
                 evalStackSize++;
 
-            case TOperation(op) :
+            case TOperator(op) :
                 if(evalStackSize < 2) throw NotEnoughOperands;
                 switch(op) {
                     case plus:
@@ -153,6 +181,29 @@ class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, Dic
                         var rhs = evalStack.pop();
                         var lhs = evalStack.pop();
                         evalStack.add(lhs / rhs);
+                        evalStackSize--;
+                    case lt | lte | gt | gte | eq:
+                        isComparison = true;
+                        var rhs = evalStack.pop();
+                        var lhs = evalStack.pop();
+                        trace('comp');
+                        trace(lhs);
+                        trace(rhs);
+                        var result = switch(op) {
+                            case lt:
+                                lhs < rhs;
+                            case lte:
+                                lhs <= rhs;
+                            case gt:
+                                lhs > rhs;
+                            case gte:
+                                lhs >= rhs;
+                            case eq:
+                                lhs == rhs;
+                            default:
+                                false; //Doesn't matter
+                        }
+                        evalStack.add(result ? 1 : 0);
                         evalStackSize--;
                 }
 

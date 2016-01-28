@@ -10,7 +10,14 @@ class Main {
 
         var base_url = doc.getElementById('base').attributes.getNamedItem('href').value;
         input = input.substr(base_url.length);
-        var dice_regex = ~/^\(*(\d+d\d+|\d+)([+\-*\/]\(*(\d+d\d+|\d+)\)*)*\)*$/i;
+
+        //Clean up character codes, only works for characters with codes <= 255 right now
+        var htmlCharcodeRegex = ~/%([0-9A-F]{1,2})/ig;
+        input = htmlCharcodeRegex.map(input, function(reg:EReg) {
+            return String.fromCharCode(Std.parseInt('0x' + reg.matched(1)));
+        });
+
+        var dice_regex = ~/^\(*(\d+d\d+|\d+)(([+\-*\/]|<|>|=|<=|>=)\(*(\d+d\d+|\d+)\)*)*\)*$/i;
         var input_correct = dice_regex.match(input);
 
         var parser = new DiceParser(byte.ByteData.ofString(input));
@@ -36,7 +43,15 @@ class Main {
 
         var div = doc.createDivElement();
         div.align = 'center';
-        div.innerHTML = '<h1>Result: $dice_result</h1>';
+        var htmlString = '<h1>Result: ';
+        if(parser.isComparison) {
+            htmlString += (dice_result == 1) ? 'Test succeded' : 'Test failed';
+        }
+        else {
+            htmlString += '$dice_result';
+        }
+        htmlString += '</h1>';
+        div.innerHTML = htmlString;
         doc.body.appendChild(div);
 
         if(!input_correct) {

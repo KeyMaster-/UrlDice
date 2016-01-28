@@ -21,6 +21,46 @@ EReg.prototype = {
 	,matched: function(n) {
 		if(this.r.m != null && n >= 0 && n < this.r.m.length) return this.r.m[n]; else throw new js__$Boot_HaxeError("EReg::matched");
 	}
+	,matchedPos: function() {
+		if(this.r.m == null) throw new js__$Boot_HaxeError("No string matched");
+		return { pos : this.r.m.index, len : this.r.m[0].length};
+	}
+	,matchSub: function(s,pos,len) {
+		if(len == null) len = -1;
+		if(this.r.global) {
+			this.r.lastIndex = pos;
+			this.r.m = this.r.exec(len < 0?s:HxOverrides.substr(s,0,pos + len));
+			var b = this.r.m != null;
+			if(b) this.r.s = s;
+			return b;
+		} else {
+			var b1 = this.match(len < 0?HxOverrides.substr(s,pos,null):HxOverrides.substr(s,pos,len));
+			if(b1) {
+				this.r.s = s;
+				this.r.m.index += pos;
+			}
+			return b1;
+		}
+	}
+	,map: function(s,f) {
+		var offset = 0;
+		var buf = new StringBuf();
+		do {
+			if(offset >= s.length) break; else if(!this.matchSub(s,offset)) {
+				buf.add(HxOverrides.substr(s,offset,null));
+				break;
+			}
+			var p = this.matchedPos();
+			buf.add(HxOverrides.substr(s,offset,p.pos - offset));
+			buf.add(f(this));
+			if(p.len == 0) {
+				buf.add(HxOverrides.substr(s,p.pos,1));
+				offset = p.pos + 1;
+			} else offset = p.pos + p.len;
+		} while(this.r.global);
+		if(!this.r.global && offset > 0 && offset < s.length) buf.add(HxOverrides.substr(s,offset,null));
+		return buf.b;
+	}
 	,__class__: EReg
 };
 var HxOverrides = function() { };
@@ -104,6 +144,16 @@ Std.parseInt = function(x) {
 	if(isNaN(v)) return null;
 	return v;
 };
+var StringBuf = function() {
+	this.b = "";
+};
+StringBuf.__name__ = true;
+StringBuf.prototype = {
+	add: function(x) {
+		this.b += Std.string(x);
+	}
+	,__class__: StringBuf
+};
 var StringTools = function() { };
 StringTools.__name__ = true;
 StringTools.fastCodeAt = function(s,index) {
@@ -127,9 +177,9 @@ byte__$ByteData_ByteData_$Impl_$.ofString = function(s) {
 byte__$ByteData_ByteData_$Impl_$.readString = function(this1,pos,len) {
 	return this1.getString(pos,len);
 };
-var client_DiceToken = { __ename__ : true, __constructs__ : ["TRoll","TOperation","TNumber","TPLeft","TPRight","TEoF"] };
+var client_DiceToken = { __ename__ : true, __constructs__ : ["TRoll","TOperator","TNumber","TPLeft","TPRight","TEoF"] };
 client_DiceToken.TRoll = function(left,right) { var $x = ["TRoll",0,left,right]; $x.__enum__ = client_DiceToken; $x.toString = $estr; return $x; };
-client_DiceToken.TOperation = function(op) { var $x = ["TOperation",1,op]; $x.__enum__ = client_DiceToken; $x.toString = $estr; return $x; };
+client_DiceToken.TOperator = function(op) { var $x = ["TOperator",1,op]; $x.__enum__ = client_DiceToken; $x.toString = $estr; return $x; };
 client_DiceToken.TNumber = function(n) { var $x = ["TNumber",2,n]; $x.__enum__ = client_DiceToken; $x.toString = $estr; return $x; };
 client_DiceToken.TPLeft = ["TPLeft",3];
 client_DiceToken.TPLeft.toString = $estr;
@@ -140,7 +190,7 @@ client_DiceToken.TPRight.__enum__ = client_DiceToken;
 client_DiceToken.TEoF = ["TEoF",5];
 client_DiceToken.TEoF.toString = $estr;
 client_DiceToken.TEoF.__enum__ = client_DiceToken;
-var client_Op = { __ename__ : true, __constructs__ : ["plus","minus","multiply","divide"] };
+var client_Op = { __ename__ : true, __constructs__ : ["plus","minus","multiply","divide","gt","gte","lt","lte","eq"] };
 client_Op.plus = ["plus",0];
 client_Op.plus.toString = $estr;
 client_Op.plus.__enum__ = client_Op;
@@ -153,6 +203,21 @@ client_Op.multiply.__enum__ = client_Op;
 client_Op.divide = ["divide",3];
 client_Op.divide.toString = $estr;
 client_Op.divide.__enum__ = client_Op;
+client_Op.gt = ["gt",4];
+client_Op.gt.toString = $estr;
+client_Op.gt.__enum__ = client_Op;
+client_Op.gte = ["gte",5];
+client_Op.gte.toString = $estr;
+client_Op.gte.__enum__ = client_Op;
+client_Op.lt = ["lt",6];
+client_Op.lt.toString = $estr;
+client_Op.lt.__enum__ = client_Op;
+client_Op.lte = ["lte",7];
+client_Op.lte.toString = $estr;
+client_Op.lte.__enum__ = client_Op;
+client_Op.eq = ["eq",8];
+client_Op.eq.toString = $estr;
+client_Op.eq.__enum__ = client_Op;
 var hxparse_Lexer = function(input,sourceName) {
 	if(sourceName == null) sourceName = "<null>";
 	this.current = "";
@@ -902,6 +967,25 @@ client_DiceLexer.strToRoll = function(str) {
 	regex.match(str);
 	return client_DiceToken.TRoll(Std.parseInt(regex.matched(1)),Std.parseInt(regex.matched(2)));
 };
+client_DiceLexer.strToCompOp = function(str) {
+	var regex = new EReg("(<=|>=|<|>|=)","");
+	regex.match(str);
+	var _g = regex.matched(1);
+	switch(_g) {
+	case "<":
+		return client_Op.lt;
+	case "<=":
+		return client_Op.lte;
+	case ">":
+		return client_Op.gt;
+	case ">=":
+		return client_Op.gte;
+	case "=":
+		return client_Op.eq;
+	default:
+		return client_Op.eq;
+	}
+};
 client_DiceLexer.__super__ = hxparse_Lexer;
 client_DiceLexer.prototype = $extend(hxparse_Lexer.prototype,{
 	__class__: client_DiceLexer
@@ -992,6 +1076,7 @@ var hxparse_ParserBuilder = function() { };
 hxparse_ParserBuilder.__name__ = true;
 var client_DiceParser = function(input) {
 	this.evalStackSize = 0;
+	this.isComparison = false;
 	this.rolls = new haxe_ds_IntMap();
 	this.shuntStack = new haxe_ds_GenericStack();
 	this.evalStack = new haxe_ds_GenericStack();
@@ -1056,10 +1141,7 @@ client_DiceParser.prototype = $extend(hxparse_Parser_$hxparse_$LexerTokenSource_
 				this.token = this.token.next;
 				while(this.shuntStack.first() != client_DiceToken.TPLeft) {
 					this.pushToEval(this.shuntStack.pop());
-					if(this.shuntStack.head == null) {
-						console.log("mismatch while parsing right paren");
-						throw new js__$Boot_HaxeError(0);
-					}
+					if(this.shuntStack.head == null) throw new js__$Boot_HaxeError(0);
 				}
 				if(this.shuntStack.pop() == null) throw new js__$Boot_HaxeError(0);
 				return true;
@@ -1072,10 +1154,12 @@ client_DiceParser.prototype = $extend(hxparse_Parser_$hxparse_$LexerTokenSource_
 	}
 	,precendence_of: function(op) {
 		switch(op[1]) {
-		case 0:case 1:
+		case 6:case 7:case 4:case 5:case 8:
 			return 1;
-		case 2:case 3:
+		case 0:case 1:
 			return 2;
+		case 2:case 3:
+			return 3;
 		}
 	}
 	,pushToEval: function(token) {
@@ -1123,6 +1207,36 @@ client_DiceParser.prototype = $extend(hxparse_Parser_$hxparse_$LexerTokenSource_
 				this.evalStack.add(lhs1 / rhs1);
 				this.evalStackSize--;
 				break;
+			case 6:case 7:case 4:case 5:case 8:
+				this.isComparison = true;
+				var rhs2 = this.evalStack.pop();
+				var lhs2 = this.evalStack.pop();
+				console.log("comp");
+				console.log(lhs2);
+				console.log(rhs2);
+				var result;
+				switch(op[1]) {
+				case 6:
+					result = lhs2 < rhs2;
+					break;
+				case 7:
+					result = lhs2 <= rhs2;
+					break;
+				case 4:
+					result = lhs2 > rhs2;
+					break;
+				case 5:
+					result = lhs2 >= rhs2;
+					break;
+				case 8:
+					result = lhs2 == rhs2;
+					break;
+				default:
+					result = false;
+				}
+				this.evalStack.add(result?1:0);
+				this.evalStackSize--;
+				break;
 			}
 			break;
 		case 5:
@@ -1145,7 +1259,11 @@ client_Main.main = function() {
 	var input = window.location.pathname;
 	var base_url = doc.getElementById("base").attributes.getNamedItem("href").value;
 	input = HxOverrides.substr(input,base_url.length,null);
-	var dice_regex = new EReg("^\\(*(\\d+d\\d+|\\d+)([+\\-*/]\\(*(\\d+d\\d+|\\d+)\\)*)*\\)*$","i");
+	var htmlCharcodeRegex = new EReg("%([0-9A-F]{1,2})","ig");
+	input = htmlCharcodeRegex.map(input,function(reg) {
+		return String.fromCharCode(Std.parseInt("0x" + reg.matched(1)));
+	});
+	var dice_regex = new EReg("^\\(*(\\d+d\\d+|\\d+)(([+\\-*/]|<|>|=|<=|>=)\\(*(\\d+d\\d+|\\d+)\\)*)*\\)*$","i");
 	var input_correct = dice_regex.match(input);
 	var parser = new client_DiceParser((function($this) {
 		var $r;
@@ -1176,7 +1294,10 @@ client_Main.main = function() {
 	}
 	var div = doc.createElement("div");
 	div.align = "center";
-	div.innerHTML = "<h1>Result: " + dice_result + "</h1>";
+	var htmlString = "<h1>Result: ";
+	if(parser.isComparison) if(dice_result == 1) htmlString += "Test succeded"; else htmlString += "Test failed"; else htmlString += "" + dice_result;
+	htmlString += "</h1>";
+	div.innerHTML = htmlString;
 	doc.body.appendChild(div);
 	if(!input_correct) {
 		div = doc.createElement("div");
@@ -1769,20 +1890,22 @@ js_Boot.__toStr = {}.toString;
 client_DiceLexer.tok = hxparse_Lexer.buildRuleset([{ rule : "[1-9][0-9]*d[1-9][0-9]*", func : function(lexer) {
 	return client_DiceLexer.strToRoll(lexer.current);
 }},{ rule : "\\+", func : function(lexer1) {
-	return client_DiceToken.TOperation(client_Op.plus);
+	return client_DiceToken.TOperator(client_Op.plus);
 }},{ rule : "\\-", func : function(lexer2) {
-	return client_DiceToken.TOperation(client_Op.minus);
+	return client_DiceToken.TOperator(client_Op.minus);
 }},{ rule : "\\*", func : function(lexer3) {
-	return client_DiceToken.TOperation(client_Op.multiply);
+	return client_DiceToken.TOperator(client_Op.multiply);
 }},{ rule : "/", func : function(lexer4) {
-	return client_DiceToken.TOperation(client_Op.divide);
+	return client_DiceToken.TOperator(client_Op.divide);
 }},{ rule : "\\(", func : function(lexer5) {
 	return client_DiceToken.TPLeft;
 }},{ rule : "\\)", func : function(lexer6) {
 	return client_DiceToken.TPRight;
 }},{ rule : "[0-9]+", func : function(lexer7) {
 	return client_DiceToken.TNumber(Std.parseInt(lexer7.current));
-}},{ rule : "", func : function(lexer8) {
+}},{ rule : "(<|<=|>=|>|=)", func : function(lexer8) {
+	return client_DiceToken.TOperator(client_DiceLexer.strToCompOp(lexer8.current));
+}},{ rule : "", func : function(lexer9) {
 	return client_DiceToken.TEoF;
 }}],"tok");
 client_DiceLexer.generatedRulesets = [client_DiceLexer.tok];
