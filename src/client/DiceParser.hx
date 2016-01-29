@@ -23,6 +23,13 @@ enum Op {
     eq;
 }
 
+enum RoundMode {
+    round;
+    up;
+    down;
+    none;
+}
+
 class DiceLexer extends hxparse.Lexer implements hxparse.RuleBuilder {
     static public var tok = @:rule [
         "[1-9][0-9]*d[1-9][0-9]*" => strToRoll(lexer.current),
@@ -67,6 +74,7 @@ class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, Dic
         //Record of all individual dice rolls
     public var rolls:Map<Int, Array<Int>>;
     public var isComparison:Bool = false;
+    public var roundMode:RoundMode = none;
 
     var shuntStack:GenericStack<DiceToken>;
     var evalStack:GenericStack<Float>;
@@ -88,7 +96,17 @@ class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, Dic
             pushToEval(shuntStack.pop());
         }
         if(evalStackSize > 1) throw EvalStackTooBig;
-        return evalStack.pop();
+        var result = evalStack.pop();
+        return switch(roundMode) {
+            case none:
+                result;
+            case round:
+                Math.round(result);
+            case up:
+                Math.ceil(result);
+            case down:
+                Math.floor(result);
+        }
     }
 
     function parse_next() {
@@ -183,12 +201,10 @@ class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, Dic
                         evalStack.add(lhs / rhs);
                         evalStackSize--;
                     case lt | lte | gt | gte | eq:
+                        if(isComparison) throw TooManyComparisons;
                         isComparison = true;
                         var rhs = evalStack.pop();
                         var lhs = evalStack.pop();
-                        trace('comp');
-                        trace(lhs);
-                        trace(rhs);
                         var result = switch(op) {
                             case lt:
                                 lhs < rhs;
@@ -229,6 +245,7 @@ class DiceParser extends hxparse.Parser<hxparse.LexerTokenSource<DiceToken>, Dic
 abstract ParsingError(Int) from Int to Int {
     var ParenMismatch = 0;
     var NotEnoughOperands = 1;
-    var EvalStackTooBig = 2;
-    var TEoFInEvalStack = 3;
+    var TooManyComparisons = 2;
+    var EvalStackTooBig = 3;
+    var TEoFInEvalStack = 4;
 }

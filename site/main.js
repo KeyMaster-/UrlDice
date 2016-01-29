@@ -409,10 +409,11 @@ var server_Main = function() { };
 server_Main.__name__ = true;
 server_Main.main = function() {
 	js_node_Http.createServer(function(req,res) {
-		var requestedFile = "index.html";
-		if(js_node_Path.basename(req.url) == "client.js") requestedFile = "client.js";
-		js_node_Fs.readFile(js_node_Path.resolve(__dirname,requestedFile),"UTF-8",function(err,data) {
-			res.writeHead(200,{ 'Content-Type' : "text/html", 'Content-Length' : data.length});
+		var requestedFile = js_node_Path.basename(req.url);
+		var content_type = "text/html";
+		if(requestedFile == "favicon.ico") content_type = "image/x-icon"; else if(requestedFile != "client.js") requestedFile = "index.html";
+		js_node_Fs.readFile(js_node_Path.resolve(__dirname,requestedFile),function(err,data) {
+			res.writeHead(200,{ 'Content-Type' : content_type});
 			res.write(data);
 			res.end();
 		});

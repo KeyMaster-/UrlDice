@@ -104,6 +104,11 @@ HxOverrides.iter = function(a) {
 		return this.arr[this.cur++];
 	}};
 };
+var Lambda = function() { };
+Lambda.__name__ = true;
+Lambda.empty = function(it) {
+	return !$iterator(it)().hasNext();
+};
 var List = function() {
 	this.length = 0;
 };
@@ -218,6 +223,19 @@ client_Op.lte.__enum__ = client_Op;
 client_Op.eq = ["eq",8];
 client_Op.eq.toString = $estr;
 client_Op.eq.__enum__ = client_Op;
+var client_RoundMode = { __ename__ : true, __constructs__ : ["round","up","down","none"] };
+client_RoundMode.round = ["round",0];
+client_RoundMode.round.toString = $estr;
+client_RoundMode.round.__enum__ = client_RoundMode;
+client_RoundMode.up = ["up",1];
+client_RoundMode.up.toString = $estr;
+client_RoundMode.up.__enum__ = client_RoundMode;
+client_RoundMode.down = ["down",2];
+client_RoundMode.down.toString = $estr;
+client_RoundMode.down.__enum__ = client_RoundMode;
+client_RoundMode.none = ["none",3];
+client_RoundMode.none.toString = $estr;
+client_RoundMode.none.__enum__ = client_RoundMode;
 var hxparse_Lexer = function(input,sourceName) {
 	if(sourceName == null) sourceName = "<null>";
 	this.current = "";
@@ -1076,6 +1094,7 @@ var hxparse_ParserBuilder = function() { };
 hxparse_ParserBuilder.__name__ = true;
 var client_DiceParser = function(input) {
 	this.evalStackSize = 0;
+	this.roundMode = client_RoundMode.none;
 	this.isComparison = false;
 	this.rolls = new haxe_ds_IntMap();
 	this.shuntStack = new haxe_ds_GenericStack();
@@ -1092,8 +1111,19 @@ client_DiceParser.prototype = $extend(hxparse_Parser_$hxparse_$LexerTokenSource_
 		while(this.parse_next()) {
 		}
 		while(!(this.shuntStack.head == null)) this.pushToEval(this.shuntStack.pop());
-		if(this.evalStackSize > 1) throw new js__$Boot_HaxeError(2);
-		return this.evalStack.pop();
+		if(this.evalStackSize > 1) throw new js__$Boot_HaxeError(3);
+		var result = this.evalStack.pop();
+		var _g = this.roundMode;
+		switch(_g[1]) {
+		case 3:
+			return result;
+		case 0:
+			return Math.round(result);
+		case 1:
+			return Math.ceil(result);
+		case 2:
+			return Math.floor(result);
+		}
 	}
 	,parse_next: function() {
 		{
@@ -1208,12 +1238,10 @@ client_DiceParser.prototype = $extend(hxparse_Parser_$hxparse_$LexerTokenSource_
 				this.evalStackSize--;
 				break;
 			case 6:case 7:case 4:case 5:case 8:
+				if(this.isComparison) throw new js__$Boot_HaxeError(2);
 				this.isComparison = true;
 				var rhs2 = this.evalStack.pop();
 				var lhs2 = this.evalStack.pop();
-				console.log("comp");
-				console.log(lhs2);
-				console.log(rhs2);
 				var result;
 				switch(op[1]) {
 				case 6:
@@ -1240,7 +1268,7 @@ client_DiceParser.prototype = $extend(hxparse_Parser_$hxparse_$LexerTokenSource_
 			}
 			break;
 		case 5:
-			throw new js__$Boot_HaxeError(3);
+			throw new js__$Boot_HaxeError(4);
 			break;
 		case 3:case 4:
 			throw new js__$Boot_HaxeError(0);
@@ -1252,77 +1280,128 @@ client_DiceParser.prototype = $extend(hxparse_Parser_$hxparse_$LexerTokenSource_
 	}
 	,__class__: client_DiceParser
 });
-var client_Main = function() { };
+var client_Main = function() {
+};
 client_Main.__name__ = true;
 client_Main.main = function() {
-	var doc = window.document;
-	var input = window.location.pathname;
-	var base_url = doc.getElementById("base").attributes.getNamedItem("href").value;
-	input = HxOverrides.substr(input,base_url.length,null);
-	var htmlCharcodeRegex = new EReg("%([0-9A-F]{1,2})","ig");
-	input = htmlCharcodeRegex.map(input,function(reg) {
-		return String.fromCharCode(Std.parseInt("0x" + reg.matched(1)));
-	});
-	var dice_regex = new EReg("^\\(*(\\d+d\\d+|\\d+)(([+\\-*/]|<|>|=|<=|>=)\\(*(\\d+d\\d+|\\d+)\\)*)*\\)*$","i");
-	var input_correct = dice_regex.match(input);
-	var parser = new client_DiceParser((function($this) {
-		var $r;
-		var data = haxe_io_Bytes.ofString(input);
-		$r = data;
-		return $r;
-	}(this)));
-	var dice_result = 0.0;
-	var error_message = "Your input was incorrect, ";
-	try {
-		dice_result = parser.parse();
-	} catch( e ) {
-		if (e instanceof js__$Boot_HaxeError) e = e.val;
-		if( js_Boot.__instanceof(e,Int) ) {
-			input_correct = false;
-			switch(e) {
-			case 0:
-				error_message += "you either forgot a bracket, or have too many.";
-				break;
-			case 1:
-				error_message += "you may have forgotten a number or dice roll in your input.";
-				break;
-			case 2:case 3:
-				error_message = "Something went wrong here.<br>" + ("Please tweet the url you typed in, what browser you're using and the number " + e + " to <a href=\"https://www.twitter.com/Keymaster_\">@Keymaster_</a> and I will try to fix this. Thank you!");
-				break;
+	new client_Main().run();
+};
+client_Main.prototype = {
+	run: function() {
+		this.doc = window.document;
+		var input = window.location.pathname;
+		var base_url = this.doc.getElementById("base").attributes.getNamedItem("href").value;
+		input = HxOverrides.substr(input,base_url.length,null);
+		var htmlCharcodeRegex = new EReg("%([0-9A-F]{1,2})","ig");
+		input = htmlCharcodeRegex.map(input,function(reg) {
+			return String.fromCharCode(Std.parseInt("0x" + reg.matched(1)));
+		});
+		var split_input = input.split("|");
+		if(split_input.length > 2) {
+			this.error("There should be no more than one | character in your input!");
+			return;
+		}
+		input = split_input[0];
+		if(input == "") {
+			this.error("You didn't provide any input!");
+			return;
+		}
+		var dice_regex = new EReg("^\\(*(\\d+d\\d+|\\d+)(([+\\-*/]|<|>|=|<=|>=)\\(*(\\d+d\\d+|\\d+)\\)*)*\\)*$","i");
+		if(!dice_regex.match(input)) {
+			this.error("Your input is incorrect, please check it again!");
+			return;
+		}
+		var parser = new client_DiceParser((function($this) {
+			var $r;
+			var data = haxe_io_Bytes.ofString(input);
+			$r = data;
+			return $r;
+		}(this)));
+		if(split_input.length == 2 && split_input[1] != "") {
+			var flags_regex = new EReg("r=(r|u|d|n)","i");
+			if(flags_regex.match(split_input[1])) {
+				var _g = flags_regex.matched(1);
+				switch(_g) {
+				case "r":
+					parser.roundMode = client_RoundMode.round;
+					break;
+				case "u":
+					parser.roundMode = client_RoundMode.up;
+					break;
+				case "d":
+					parser.roundMode = client_RoundMode.down;
+					break;
+				case "n":
+					parser.roundMode = client_RoundMode.none;
+					break;
+				}
+			} else {
+				this.error("Your flags were incorrect, please check them again!");
+				return;
 			}
-		} else throw(e);
+		}
+		var dice_result = 0.0;
+		try {
+			dice_result = parser.parse();
+		} catch( e ) {
+			if (e instanceof js__$Boot_HaxeError) e = e.val;
+			if( js_Boot.__instanceof(e,Int) ) {
+				var error_message = "Your input was incorrect, ";
+				switch(e) {
+				case 0:
+					error_message += "you either forgot a bracket, or have too many.";
+					break;
+				case 1:
+					error_message += "maybe you forgot a number or dice roll, or you have too many operators?.";
+					break;
+				case 2:
+					error_message += "your input can't have more than one comparison!";
+					break;
+				case 3:case 4:
+					error_message = "Something went wrong here.<br>" + ("Please tweet the url you typed in, what browser you're using and the number " + e + " to <a href=\"https://www.twitter.com/Keymaster_\">@Keymaster_</a> and I will try to fix this. Thank you!");
+					break;
+				}
+				this.error(error_message);
+			} else throw(e);
+		}
+		this.success(dice_result,parser);
 	}
-	var div = doc.createElement("div");
-	div.align = "center";
-	var htmlString = "<h1>Result: ";
-	if(parser.isComparison) if(dice_result == 1) htmlString += "Test succeded"; else htmlString += "Test failed"; else htmlString += "" + dice_result;
-	htmlString += "</h1>";
-	div.innerHTML = htmlString;
-	doc.body.appendChild(div);
-	if(!input_correct) {
-		div = doc.createElement("div");
+	,success: function(result,parser) {
+		var div = this.doc.createElement("div");
 		div.align = "center";
-		div.innerHTML = error_message += "<br><br>";
-		doc.body.appendChild(div);
+		var htmlString = "<h1>Result: ";
+		if(parser.isComparison) if(result == 1) htmlString += "Test succeded"; else htmlString += "Test failed"; else htmlString += "" + result;
+		htmlString += "</h1>";
+		div.innerHTML = htmlString;
+		this.doc.body.appendChild(div);
+		if(!Lambda.empty(parser.rolls)) {
+			var table = this.doc.createElement("table");
+			table.align = "center";
+			var row;
+			row = js_Boot.__cast(table.insertRow() , HTMLTableRowElement);
+			var cell = row.insertCell();
+			cell.innerHTML = "<b>Die</b>";
+			cell = row.insertCell();
+			cell.innerHTML = "<b>Value</b>";
+			var $it0 = parser.rolls.keys();
+			while( $it0.hasNext() ) {
+				var key = $it0.next();
+				row = js_Boot.__cast(table.insertRow() , HTMLTableRowElement);
+				cell = row.insertCell();
+				cell.innerHTML = "" + key;
+				cell = row.insertCell();
+				cell.innerHTML = parser.rolls.h[key].join(", ");
+			}
+			this.doc.body.appendChild(table);
+		}
 	}
-	var table = doc.createElement("table");
-	table.align = "center";
-	var row;
-	row = js_Boot.__cast(table.insertRow() , HTMLTableRowElement);
-	var cell = row.insertCell();
-	cell.innerHTML = "<b>Die</b>";
-	cell = row.insertCell();
-	cell.innerHTML = "<b>Value</b>";
-	var $it0 = parser.rolls.keys();
-	while( $it0.hasNext() ) {
-		var key = $it0.next();
-		row = js_Boot.__cast(table.insertRow() , HTMLTableRowElement);
-		cell = row.insertCell();
-		cell.innerHTML = "" + key;
-		cell = row.insertCell();
-		cell.innerHTML = parser.rolls.h[key].join(", ");
+	,error: function(message) {
+		var div = this.doc.createElement("div");
+		div.align = "center";
+		div.innerHTML = "<h1>" + message + "</h1><br><br>";
+		this.doc.body.appendChild(div);
 	}
-	doc.body.appendChild(table);
+	,__class__: client_Main
 };
 var haxe_IMap = function() { };
 haxe_IMap.__name__ = true;
@@ -1373,6 +1452,14 @@ haxe_ds_IntMap.prototype = {
 		if(this.h.hasOwnProperty(key)) a.push(key | 0);
 		}
 		return HxOverrides.iter(a);
+	}
+	,iterator: function() {
+		return { ref : this.h, it : this.keys(), hasNext : function() {
+			return this.it.hasNext();
+		}, next : function() {
+			var i = this.it.next();
+			return this.ref[i];
+		}};
 	}
 	,__class__: haxe_ds_IntMap
 };
@@ -1864,6 +1951,9 @@ js_html_compat_Uint8Array._subarray = function(start,end) {
 	a.byteOffset = start;
 	return a;
 };
+function $iterator(o) { if( o instanceof Array ) return function() { return HxOverrides.iter(o); }; return typeof(o.iterator) == 'function' ? $bind(o,o.iterator) : o.iterator; }
+var $_, $fid = 0;
+function $bind(o,m) { if( m == null ) return null; if( m.__id__ == null ) m.__id__ = $fid++; var f; if( o.hx__closures__ == null ) o.hx__closures__ = {}; else f = o.hx__closures__[m.__id__]; if( f == null ) { f = function(){ return f.method.apply(f.scope, arguments); }; f.scope = o; f.method = m; o.hx__closures__[m.__id__] = f; } return f; }
 if(Array.prototype.indexOf) HxOverrides.indexOf = function(a,o,i) {
 	return Array.prototype.indexOf.call(a,o,i);
 };

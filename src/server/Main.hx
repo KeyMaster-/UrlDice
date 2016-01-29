@@ -12,12 +12,17 @@ class Main {
     
     static function main() {
         Http.createServer(function(req, res) {
-            var requestedFile = 'index.html';
-            if(Path.basename(req.url) == 'client.js') {
-                requestedFile = 'client.js';
+            var requestedFile = Path.basename(req.url);
+            var content_type = 'text/html';
+            if(requestedFile == 'favicon.ico') {
+                content_type = 'image/x-icon';
             }
-            Fs.readFile(Path.resolve(Node.__dirname, requestedFile), 'UTF-8', function(err, data) {
-                res.writeHead(200, {'Content-Type': 'text/html','Content-Length':data.length});
+            else if(requestedFile != 'client.js') {
+                requestedFile = 'index.html';
+            }
+
+            Fs.readFile(Path.resolve(Node.__dirname, requestedFile), function(err, data) {
+                res.writeHead(200, {'Content-Type': content_type});
                 res.write(data);
                 res.end();
             });
