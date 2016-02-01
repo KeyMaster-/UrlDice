@@ -1281,14 +1281,26 @@ client_DiceParser.prototype = $extend(hxparse_Parser_$hxparse_$LexerTokenSource_
 	,__class__: client_DiceParser
 });
 var client_Main = function() {
+	this.doc = window.document;
+	this.input_field = js_Boot.__cast(this.doc.getElementById("notation_input") , HTMLInputElement);
+	this.input_field.onkeydown = $bind(this,this.onInputKeydown);
 };
 client_Main.__name__ = true;
 client_Main.main = function() {
-	new client_Main().run();
+	var main = new client_Main();
+	main.first_run();
 };
 client_Main.prototype = {
-	run: function() {
-		this.doc = window.document;
+	first_run: function() {
+		this.run(this.inputFromURL());
+	}
+	,onInputKeydown: function(e) {
+		if(e.keyCode == 13) {
+			window.history.pushState(null,"DiceUrl","" + this.input_field.value);
+			this.run(this.input_field.value);
+		}
+	}
+	,inputFromURL: function() {
 		var input = window.location.pathname;
 		var base_url = this.doc.getElementById("base").attributes.getNamedItem("href").value;
 		input = HxOverrides.substr(input,base_url.length,null);
@@ -1296,19 +1308,23 @@ client_Main.prototype = {
 		input = htmlCharcodeRegex.map(input,function(reg) {
 			return String.fromCharCode(Std.parseInt("0x" + reg.matched(1)));
 		});
+		this.input_field.value = input;
+		return input;
+	}
+	,run: function(input) {
 		var split_input = input.split("|");
 		if(split_input.length > 2) {
-			this.error("There should be no more than one | character in your input!");
+			this.error("There should be no more than one | character in your input.");
 			return;
 		}
 		input = split_input[0];
 		if(input == "") {
-			this.error("You didn't provide any input!");
+			this.error("You didn't provide any input.");
 			return;
 		}
 		var dice_regex = new EReg("^\\(*(\\d+d\\d+|\\d+)(([+\\-*/]|<|>|=|<=|>=)\\(*(\\d+d\\d+|\\d+)\\)*)*\\)*$","i");
 		if(!dice_regex.match(input)) {
-			this.error("Your input is incorrect, please check it again!");
+			this.error("Your input is incorrect, please check for errors.");
 			return;
 		}
 		var parser = new client_DiceParser((function($this) {
@@ -1336,7 +1352,7 @@ client_Main.prototype = {
 					break;
 				}
 			} else {
-				this.error("Your flags were incorrect, please check them again!");
+				this.error("Your flags were incorrect, please check for errors.");
 				return;
 			}
 		}
@@ -1352,10 +1368,10 @@ client_Main.prototype = {
 					error_message += "you either forgot a bracket, or have too many.";
 					break;
 				case 1:
-					error_message += "maybe you forgot a number or dice roll, or you have too many operators?.";
+					error_message += "maybe you forgot a number or dice roll, or you have too many operators?";
 					break;
 				case 2:
-					error_message += "your input can't have more than one comparison!";
+					error_message += "your input can't have more than one comparison.";
 					break;
 				case 3:case 4:
 					error_message = "Something went wrong here.<br>" + ("Please tweet the url you typed in, what browser you're using and the number " + e + " to <a href=\"https://www.twitter.com/Keymaster_\">@Keymaster_</a> and I will try to fix this. Thank you!");
@@ -1367,22 +1383,21 @@ client_Main.prototype = {
 		this.success(dice_result,parser);
 	}
 	,success: function(result,parser) {
-		var div = this.doc.createElement("div");
-		div.align = "center";
-		var htmlString = "<h1>Result: ";
+		var headline = this.doc.getElementById("title_headline");
+		var htmlString = "Result: ";
 		if(parser.isComparison) if(result == 1) htmlString += "Test succeded"; else htmlString += "Test failed"; else htmlString += "" + result;
-		htmlString += "</h1>";
-		div.innerHTML = htmlString;
-		this.doc.body.appendChild(div);
+		headline.innerText = htmlString;
+		var results_div = this.doc.getElementById("results_table");
+		while(results_div.childNodes.length > 0) results_div.removeChild(results_div.childNodes.item(0));
 		if(!Lambda.empty(parser.rolls)) {
 			var table = this.doc.createElement("table");
 			table.align = "center";
 			var row;
 			row = js_Boot.__cast(table.insertRow() , HTMLTableRowElement);
 			var cell = row.insertCell();
-			cell.innerHTML = "<b>Die</b>";
+			cell.innerHTML = "<div align=\"left\"><b>Die</b></div>";
 			cell = row.insertCell();
-			cell.innerHTML = "<b>Value</b>";
+			cell.innerHTML = "<div align=\"center\"><b>Value</b></div>";
 			var $it0 = parser.rolls.keys();
 			while( $it0.hasNext() ) {
 				var key = $it0.next();
@@ -1392,14 +1407,12 @@ client_Main.prototype = {
 				cell = row.insertCell();
 				cell.innerHTML = parser.rolls.h[key].join(", ");
 			}
-			this.doc.body.appendChild(table);
+			results_div.appendChild(table);
 		}
 	}
 	,error: function(message) {
-		var div = this.doc.createElement("div");
-		div.align = "center";
-		div.innerHTML = "<h1>" + message + "</h1><br><br>";
-		this.doc.body.appendChild(div);
+		var headline = this.doc.getElementById("title_headline");
+		headline.innerText = message;
 	}
 	,__class__: client_Main
 };
@@ -1969,6 +1982,9 @@ Bool.__ename__ = ["Bool"];
 var Class = { __name__ : ["Class"]};
 var Enum = { };
 var __map_reserved = {}
+var q = window.jQuery;
+var js = js || {}
+js.JQuery = q;
 var ArrayBuffer = $global.ArrayBuffer || js_html_compat_ArrayBuffer;
 if(ArrayBuffer.prototype.slice == null) ArrayBuffer.prototype.slice = js_html_compat_ArrayBuffer.sliceImpl;
 var DataView = $global.DataView || js_html_compat_DataView;
